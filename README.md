@@ -46,9 +46,9 @@ No modules.
 | ---- | ---- |
 | [google_billing_budget.main](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/billing_budget) | resource |
 | [google_kms_crypto_key_iam_member.pubsub_service_agent](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/kms_crypto_key_iam_member) | resource |
-| [google_project.current](https://registry.terraform.io/providers/hashicorp/google/latest/docs/data-sources/project) | data source |
 | [google_pubsub_topic.budget](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/pubsub_topic) | resource |
 | [google_pubsub_topic_iam_member.billing_publisher](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/pubsub_topic_iam_member) | resource |
+| [google_project.current](https://registry.terraform.io/providers/hashicorp/google/latest/docs/data-sources/project) | data source |
 
 ## Inputs
 
@@ -71,7 +71,7 @@ No modules.
 | <a name="input_pubsub_topic"></a> [pubsub\_topic](#input\_pubsub\_topic) | Existing topic (projects/P/topics/T) to notify when var.create\_pubsub\_topic is false; the caller must grant billing-budget-alert@system.gserviceaccount.com publish on it | `string` | `null` | no |
 | <a name="input_pubsub_topic_name"></a> [pubsub\_topic\_name](#input\_pubsub\_topic\_name) | Name of the Pub/Sub topic to create when var.create\_pubsub\_topic is true | `string` | `"billing-budget-alerts"` | no |
 | <a name="input_services"></a> [services](#input\_services) | Services the budget covers, as services/SERVICE\_ID; empty covers all services | `list(string)` | `[]` | no |
-| <a name="input_threshold_rules"></a> [threshold\_rules](#input\_threshold\_rules) | Spend thresholds (as a fraction of the budget amount, 1.0 = 100%) that trigger notifications | <pre>list(object({threshold_percent = number spend_basis = optional(string, "CURRENT_SPEND")}))</pre> | `[{threshold_percent = 0.5}, {threshold_percent = 0.9}, {threshold_percent = 1.0}, {threshold_percent = 1.0, spend_basis = "FORECASTED_SPEND"},]` | no |
+| <a name="input_threshold_rules"></a> [threshold\_rules](#input\_threshold\_rules) | Spend thresholds (as a fraction of the budget amount, 1.0 = 100%) that trigger notifications | <pre>list(object({<br/>    threshold_percent = number<br/>    spend_basis       = optional(string, "CURRENT_SPEND")<br/>  }))</pre> | <pre>[<br/>  {<br/>    "threshold_percent": 0.5<br/>  },<br/>  {<br/>    "threshold_percent": 0.9<br/>  },<br/>  {<br/>    "threshold_percent": 1<br/>  },<br/>  {<br/>    "spend_basis": "FORECASTED_SPEND",<br/>    "threshold_percent": 1<br/>  }<br/>]</pre> | no |
 
 ## Outputs
 
