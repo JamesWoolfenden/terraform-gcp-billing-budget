@@ -1,3 +1,4 @@
+# holden:ignore:HLD_TF_027: one budget plus an optional notification topic; each input maps 1:1 to a distinct google_billing_budget or google_pubsub_topic field with its own validation, and only 3 are required
 variable "billing_account" {
   type        = string
   description = "ID of the billing account the budget applies to (XXXXXX-XXXXXX-XXXXXX)"

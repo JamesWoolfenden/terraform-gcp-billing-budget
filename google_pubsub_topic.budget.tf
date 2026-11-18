@@ -1,3 +1,4 @@
+# holden:ignore:HLD_GCP_022: kms_key_name is var.kms_key_name, and the lifecycle precondition below fails the plan whenever the topic is created without it
 resource "google_pubsub_topic" "budget" {
   count = var.create_pubsub_topic ? 1 : 0
 

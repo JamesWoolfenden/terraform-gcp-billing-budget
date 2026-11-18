@@ -1,0 +1,121 @@
+{
+  "scan_date": "2026-11-18T00:00:00Z",
+  "scan_path": ".",
+  "category": "all",
+  "findings": [
+    {
+      "id": "HOLDEN_AI_001",
+      "status": "fixed",
+      "first_seen": "2026-11-18",
+      "last_seen": "2026-11-18",
+      "unresolved_since": null,
+      "suppression_reason": null,
+      "principle": "logging-and-monitoring",
+      "severity": "MEDIUM",
+      "confidence": "high",
+      "title": "disable_default_iam_recipients can be true with no topic or channel, so budget alerts reach nobody",
+      "file": "google_billing_budget.main.tf",
+      "line": 1,
+      "resource": "google_billing_budget.main",
+      "related_resources": [
+        "variable.disable_default_iam_recipients",
+        "variable.create_pubsub_topic",
+        "variable.pubsub_topic",
+        "variable.monitoring_notification_channels"
+      ],
+      "explanation": "The variable description says only to set disable_default_iam_recipients when a topic or channel is configured, but nothing enforces it. create_pubsub_topic = false, no pubsub_topic and no channels with disable_default_iam_recipients = true applies cleanly and produces a budget whose threshold alerts go to nobody.",
+      "remediation": "Add a lifecycle precondition on the budget requiring a topic (created or existing) or at least one monitoring channel when default recipients are disabled.",
+      "fixable": true,
+      "fix": "precondition {\n  condition     = !var.disable_default_iam_recipients || var.create_pubsub_topic || var.pubsub_topic != null || length(var.monitoring_notification_channels) > 0\n  error_message = \"...\"\n}"
+    },
+    {
+      "id": "HOLDEN_AI_002",
+      "status": "fixed",
+      "first_seen": "2026-11-18",
+      "last_seen": "2026-11-18",
+      "unresolved_since": null,
+      "suppression_reason": null,
+      "principle": "reliability",
+      "severity": "LOW",
+      "confidence": "high",
+      "title": "credit_types accepted while credit_types_treatment is not INCLUDE_SPECIFIED_CREDITS; the Budget API rejects it at apply",
+      "file": "google_billing_budget.main.tf",
+      "line": 1,
+      "resource": "google_billing_budget.main",
+      "related_resources": [
+        "variable.credit_types",
+        "variable.credit_types_treatment"
+      ],
+      "explanation": "The Budget API requires budget_filter.credit_types to be empty unless credit_types_treatment is INCLUDE_SPECIFIED_CREDITS. Each variable validates on its own, so a caller setting credit_types with the default INCLUDE_ALL_CREDITS passes plan and fails at apply. Principle is a best fit (apply-time correctness).",
+      "remediation": "Add a precondition tying a non-empty var.credit_types to INCLUDE_SPECIFIED_CREDITS.",
+      "fixable": true,
+      "fix": "precondition {\n  condition     = var.credit_types_treatment == \"INCLUDE_SPECIFIED_CREDITS\" || length(var.credit_types) == 0\n  error_message = \"...\"\n}"
+    },
+    {
+      "id": "HOLDEN_AI_003",
+      "status": "fixed",
+      "first_seen": "2026-11-18",
+      "last_seen": "2026-11-18",
+      "unresolved_since": null,
+      "suppression_reason": null,
+      "principle": "maintainability",
+      "severity": "LOW",
+      "confidence": "high",
+      "title": "var.pubsub_topic is silently ignored while create_pubsub_topic is true (the default)",
+      "file": "locals.tf",
+      "line": 11,
+      "resource": "local.pubsub_topic",
+      "related_resources": [
+        "variable.pubsub_topic",
+        "variable.create_pubsub_topic"
+      ],
+      "explanation": "local.pubsub_topic picks the created topic whenever create_pubsub_topic is true, so a caller who passes an existing pubsub_topic but forgets to flip create_pubsub_topic gets a second, module-created topic and their own topic never receives alerts. Nothing in plan output signals this.",
+      "remediation": "Fail the plan when both var.create_pubsub_topic and var.pubsub_topic are set.",
+      "fixable": true,
+      "fix": "precondition {\n  condition     = !var.create_pubsub_topic || var.pubsub_topic == null\n  error_message = \"...\"\n}"
+    },
+    {
+      "id": "HOLDEN_AI_004",
+      "status": "fixed",
+      "first_seen": "2026-11-18",
+      "last_seen": "2026-11-18",
+      "unresolved_since": null,
+      "suppression_reason": null,
+      "principle": "reliability",
+      "severity": "LOW",
+      "confidence": "medium",
+      "title": "Example encrypts the global budget topic with a regional (europe-west2) KMS key",
+      "file": "example/examplea/google_kms_key_ring.tf",
+      "line": 1,
+      "resource": "google_kms_key_ring.budget",
+      "related_resources": [
+        "google_kms_crypto_key.budget",
+        "module.billing-budget.google_pubsub_topic.budget"
+      ],
+      "explanation": "Pub/Sub topics are global and Google recommends regional CMEK keys only when a message storage policy pins the topic to that region with enforceInTransit and every publisher uses the regional endpoint. Cloud Billing publishes through the global endpoint and the topic has no storage policy, so the example builds a cross-region dependency on europe-west2 KMS into every budget notification.",
+      "remediation": "Create the example key ring in location global.",
+      "fixable": true,
+      "fix": "location = \"global\""
+    }
+  ],
+  "suggested_policies": [
+    {
+      "rationale": "A budget that disables default recipients with no topic or channel is a single-resource check that is wrong for any Terraform using google_billing_budget; no built-in policy covers google_billing_budget.",
+      "yaml": "id: LOCAL_GCP_001\nname: Billing budgets that disable default IAM recipients must notify a Pub/Sub topic or monitoring channel\nprinciple: logging-and-monitoring\nseverity: MEDIUM\nrationale: |\n  all_updates_rule.disable_default_iam_recipients = true stops the billing account\n  admins/users being emailed. With no pubsub_topic and no\n  monitoring_notification_channels the budget still exists and passes review, but\n  threshold alerts are delivered to nobody, so overspend goes unnoticed.\nmessage: |\n  google_billing_budget disables default IAM recipients but sets neither\n  all_updates_rule.pubsub_topic nor all_updates_rule.monitoring_notification_channels.\nremediation: |\n  Set all_updates_rule.pubsub_topic or all_updates_rule.monitoring_notification_channels,\n  or leave disable_default_iam_recipients = false.\nresources:\n  google_billing_budget:\n    if_equals:\n      path: all_updates_rule.disable_default_iam_recipients\n      value: true\n      then:\n        any:\n          - path: all_updates_rule.pubsub_topic\n            not_null: true\n          - path: all_updates_rule.monitoring_notification_channels\n            not_empty: true\n",
+      "status": "installed",
+      "first_seen": "2026-11-18",
+      "last_seen": "2026-11-18"
+    }
+  ],
+  "suggested_suppressions": [
+    {
+      "policy_id": "HLD_GCP_022",
+      "file": "google_pubsub_topic.budget.tf",
+      "line": 2,
+      "resource": "google_pubsub_topic.budget",
+      "reason": "kms_key_name = var.kms_key_name, and the topic's lifecycle precondition (var.kms_key_name != null) fails the plan whenever the topic is created (count = create_pubsub_topic) without a key, so the topic can never be created unencrypted.",
+      "suppression_comment": "# holden:ignore:HLD_GCP_022: kms_key_name is var.kms_key_name, and the lifecycle precondition below fails the plan whenever the topic is created without it",
+      "confidence": "high"
+    }
+  ]
+}

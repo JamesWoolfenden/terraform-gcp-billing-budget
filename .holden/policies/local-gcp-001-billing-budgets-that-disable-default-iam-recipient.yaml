@@ -1,0 +1,26 @@
+id: LOCAL_GCP_001
+name: Billing budgets that disable default IAM recipients must notify a Pub/Sub topic or monitoring channel
+principle: logging-and-monitoring
+severity: MEDIUM
+rationale: |
+  all_updates_rule.disable_default_iam_recipients = true stops the billing account
+  admins/users being emailed. With no pubsub_topic and no
+  monitoring_notification_channels the budget still exists and passes review, but
+  threshold alerts are delivered to nobody, so overspend goes unnoticed.
+message: |
+  google_billing_budget disables default IAM recipients but sets neither
+  all_updates_rule.pubsub_topic nor all_updates_rule.monitoring_notification_channels.
+remediation: |
+  Set all_updates_rule.pubsub_topic or all_updates_rule.monitoring_notification_channels,
+  or leave disable_default_iam_recipients = false.
+resources:
+  google_billing_budget:
+    if_equals:
+      path: all_updates_rule.disable_default_iam_recipients
+      value: true
+      then:
+        any:
+          - path: all_updates_rule.pubsub_topic
+            not_null: true
+          - path: all_updates_rule.monitoring_notification_channels
+            not_empty: true
